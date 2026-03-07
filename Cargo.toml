@@ -1,5 +1,5 @@
 [package]
-name = "rcat"
+name = "cato"
 version = "0.1.0"
 authors = ["Alex Campbell alex.m.campbell@hotmail.com"]
 edition = "2024"
@@ -7,9 +7,9 @@ license = "GPL-3.0-only"
 license-file = "LICENSE"
 description = "A lightweight file catenation tool."
 readme = "README.md"
-homepage = "https://github.com/notnotnull/rcat"
-repository = "https://github.com/notnotnull/rcat"
-keywords = ["cli", "cat", "rcat"]
+homepage = "https://github.com/notnotnull/cato"
+repository = "https://github.com/notnotnull/cato"
+keywords = ["cli", "cat", "cato"]
 categories = ["command-line-utilities"]
 
 [dependencies]

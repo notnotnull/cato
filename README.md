@@ -1,4 +1,4 @@
-# rcat
+# cato
 
 A lightweight file catenation tool written in Rust.
 
@@ -7,7 +7,7 @@ A lightweight file catenation tool written in Rust.
 ```bash
 Command-line Interface options
 
-Usage: rcat [OPTIONS] [FILES]...
+Usage: cato [OPTIONS] [FILES]...
 
 Arguments:
   [FILES]...  file(s) to read

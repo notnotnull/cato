@@ -14,8 +14,8 @@ struct Cli {
     files: Vec<std::path::PathBuf>,
 }
 
-/// Plain rcat
-fn simple_rcat(args: Cli) -> Result<()> {
+/// Plain cato
+fn simple_cato(args: Cli) -> Result<()> {
     // Get the global stdout entity
     let stdout = io::stdout();
     // wrap the handle in a buffer to reduce flushes
@@ -35,8 +35,8 @@ fn simple_rcat(args: Cli) -> Result<()> {
     Ok(())
 }
 
-/// Option enabled rcat
-fn rcat(args: Cli) -> Result<()> {
+/// Option enabled cato
+fn cato(args: Cli) -> Result<()> {
     // Get the global stdout entity
     let mut count: usize = 1;
     let stdout = io::stdout();
@@ -63,9 +63,9 @@ fn main() -> Result<()> {
     let args = Cli::parse();
 
     if args.number == false {
-        simple_rcat(args).with_context(|| format!("simple_rcat"))?;
+        simple_cato(args).with_context(|| format!("simple_cato"))?;
     } else {
-        rcat(args).with_context(|| format!("rcat"))?;
+        cato(args).with_context(|| format!("cato"))?;
     }
 
     Ok(())
