@@ -1,13 +1,19 @@
 # rcat
 
-A lightweight file concatenation tool written in rust.
+A lightweight file catenation tool written in Rust.
 
 ## Usage
 
 ```bash
-rcat <file>
-```
+Command-line Interface options
 
-```bash
-rcat --help
+Usage: rcat [OPTIONS] [FILES]...
+
+Arguments:
+  [FILES]...  file(s) to read
+
+Options:
+  -n, --number   Number all output lines
+  -h, --help     Print help
+  -V, --version  Print version
 ```

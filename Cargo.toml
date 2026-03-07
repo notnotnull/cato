@@ -1,7 +1,16 @@
 [package]
 name = "rcat"
 version = "0.1.0"
+authors = ["Alex Campbell alex.m.campbell@hotmail.com"]
 edition = "2024"
+licese = "GPL"
+licese-file = "LICENSE"
+description = "A lightweight file catenation tool."
+readme = "README.md"
+homepage = "https://github.com/notnotnull/rcat"
+repository = "https://github.com/notnotnull/rcat"
+keywords = ["cli", "cat", "rcat"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 clap = { version = "4.0", features = ["derive"] }
