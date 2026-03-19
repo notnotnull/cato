@@ -14,17 +14,17 @@ jobs:
 
     runs-on: windows-latest
 
-   steps:
-    - uses: actions/checkout@v4
-    - name: Install Rust (stable)
-      uses: dtolnay/gh-actions-rust@stable
-      with:
-        toolchain: stable
-    - name: Add MSVC toolchain components (for msvc targets)
-      if: runner.os == 'Windows'
-      run: |
-        rustup component add clippy-preview rust-src llvm-tools-preview || true
-    - name: Ensure Visual Studio build tools available
-      uses: microsoft/setup-msbuild@v1.1
-    - name: Build (release)
-      run: cargo build --verbose
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust (stable)
+        uses: dtolnay/gh-actions-rust@stable
+        with:
+          toolchain: stable
+      - name: Add MSVC toolchain components (for msvc targets)
+        if: runner.os == 'Windows'
+        run: |
+          rustup component add clippy-preview rust-src llvm-tools-preview || true
+      - name: Ensure Visual Studio build tools available
+        uses: microsoft/setup-msbuild@v1.1
+      - name: Build (release)
+        run: cargo build --verbose
