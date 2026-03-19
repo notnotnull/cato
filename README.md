@@ -36,7 +36,8 @@ cargo build --release
 
 | Platform    | Arch        | Toolchain |
 | ----------- | ----------- | ------------ |
-| Linux       | x86_64      | x86_64-unknown-linux-gnu | 
+| Linux       | x86_64      | x86_64-unknown-linux-gnu |
+| Linux       | i686        | i686-unknown-linux-gnu | 
 | Windows     | x86_64      | x86_64-pc-windows-msvc |             
 
 
