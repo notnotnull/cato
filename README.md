@@ -18,6 +18,20 @@ Options:
   -V, --version  Print version
 ```
 
+## Install
+
+### Windows 64-bit
+
+```ps
+choco install cato
+```
+
+### Cargo
+
+```
+cargo install cato
+```
+
 ## Developer Notes
 
 ### Debug Build
