@@ -15,6 +15,9 @@ struct Cli {
     /// Number all output lines
     #[arg(short = 'n', long, default_value_t = false)]
     number: bool,
+    /// Suppress repeated empty output lines
+    #[arg(short = 's', long = "squeeze-blank", default_value_t = false)]
+    squeeze_blank: bool,
     /// file(s) to read
     #[arg(num_args = 0..)]
     files: Vec<std::path::PathBuf>,
@@ -36,8 +39,8 @@ fn read_stdin() -> Result<String> {
 }
 
 fn cato(args: Cli, mode: NumberMode) -> Result<()> {
-    let show_ends = args.show_ends;
     let mut count: usize = 1;
+    let mut squeeze_count: usize = 0;
     let stdout = io::stdout();
     let mut handle = io::BufWriter::new(stdout);
 
@@ -48,7 +51,7 @@ fn cato(args: Cli, mode: NumberMode) -> Result<()> {
     };
 
     for path in files {
-        let content = if path == std::path::PathBuf::from("-") {
+        let content = if path.to_str() == Some("-") {
             read_stdin()?
         } else {
             std::fs::read_to_string(&path)
@@ -56,7 +59,17 @@ fn cato(args: Cli, mode: NumberMode) -> Result<()> {
         };
 
         for line in content.lines() {
-            let rendered_line = if show_ends {
+            if line.is_empty() && args.squeeze_blank {
+                squeeze_count += 1;
+                if squeeze_count > 1 {
+                    continue;
+                }
+            } else {
+                squeeze_count = 0;
+            }
+
+
+            let rendered_line = if args.show_ends {
                 format!("{}$", line)
             } else {
                 line.to_string()
@@ -74,7 +87,7 @@ fn cato(args: Cli, mode: NumberMode) -> Result<()> {
                 }
                 NumberMode::NonBlank => {
                     if line.is_empty() {
-                        if show_ends {
+                        if args.show_ends {
                             writeln!(handle, "$")
                                 .with_context(|| "Unable to print contents")?;
                         } else {
@@ -106,7 +119,7 @@ fn main() -> Result<()> {
         NumberMode::None
     };
 
-    cato(args, mode).with_context(|| format!("cato"))?;
+    cato(args, mode).with_context(|| "cato")?;
 
     Ok(())
 }

@@ -136,3 +136,19 @@ fn show_ends_with_e_option() -> Result<(), Box<dyn std::error::Error>> {
     let _ = fs::remove_file(path);
     Ok(())
 }
+
+#[test]
+fn squeeze_blank() -> Result<(), Box<dyn std::error::Error>> {
+    let path = temp_file_path("squeeze-blank");
+    fs::write(&path, "A\n\n\nB\n")?;
+
+    let mut cmd = Command::cargo_bin("cato")?;
+    cmd.args(["-s"])
+        .arg(&path)
+        .assert()
+        .success()
+        .stdout(predicate::eq("A\n\nB\n"));
+
+    let _ = fs::remove_file(path);
+    Ok(())
+}
