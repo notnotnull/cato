@@ -17,6 +17,7 @@ Options:
   -E, --show-ends        Display $ at the end of each line
   -n, --number           Number all output lines
   -s, --squeeze-blank    Suppress repeated empty output lines
+  -T, --show-tabs        Display TAB characters as ^I
   -h, --help             Print help
   -V, --version          Print version
 ```
