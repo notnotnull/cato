@@ -1,12 +1,10 @@
 # cato
 
-A lightweight file catenation tool written in Rust.
+A file catenation tool written in Rust.
 
 ## Usage
 
 ```bash
-A lightweight file catenation tool.
-
 Usage: cato [OPTIONS] [FILES]...
 
 Arguments:

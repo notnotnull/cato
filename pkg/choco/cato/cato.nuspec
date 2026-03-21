@@ -2,13 +2,13 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>cato</id>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
     <title>cato (Install)</title>
     <authors>Alex Campbell</authors>
     <projectUrl>https://github.com/notnotnull/cato</projectUrl>
     <tags>cato portable windows-10 utilities</tags>
-    <summary>A lightweight file catenation tool written in Rust.</summary>
-    <description>A lightweight file catenation tool written in Rust.</description>
+    <summary>A file catenation tool written in Rust.</summary>
+    <description>A file catenation tool written in Rust.</description>
   </metadata>
   <files>
     <file src="tools\**" target="tools" />

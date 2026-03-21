@@ -82,7 +82,7 @@ fn process_reader(
             break;
         }
 
-        let has_newline = buf.ends_with(&[b'\n']);
+        let has_newline = buf.ends_with(b"\n");
         let line = if has_newline {
             &buf[..buf.len() - 1]
         } else {

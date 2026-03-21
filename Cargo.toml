@@ -1,10 +1,10 @@
 [package]
 name = "cato"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Alex Campbell alex.m.campbell@hotmail.com"]
 edition = "2024"
 license = "GPL-3.0-only"
-description = "A lightweight file catenation tool."
+description = "A file catenation tool written in Rust."
 readme = "README.md"
 homepage = "https://github.com/notnotnull/cato"
 repository = "https://github.com/notnotnull/cato"
