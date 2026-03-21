@@ -39,6 +39,19 @@ struct Cli {
     files: Vec<std::path::PathBuf>,
 }
 
+impl Cli {
+    fn is_plain(&self) -> bool {
+        !self.number_nonblank
+            && !self.combination_e
+            && !self.show_ends
+            && !self.number
+            && !self.squeeze_blank
+            && !self.combination_t
+            && !self.show_tabs
+            && !self.show_nonprinting
+    }
+}
+
 #[derive(Copy, Clone)]
 enum NumberMode {
     None,
@@ -171,6 +184,41 @@ fn render_line(line: &[u8], show_tabs: bool, show_nonprinting: bool, show_ends: 
     out
 }
 
+fn simple_cato(args: Cli) -> Result<()> {
+    let stdout = io::stdout();
+    let mut handle = BufWriter::new(stdout.lock());
+
+    let files = if args.files.is_empty() {
+        vec![std::path::PathBuf::from("-")]
+    } else {
+        args.files
+    };
+
+    for path in files {
+        if path.as_os_str() == "-" {
+            let stdin = io::stdin();
+            let reader = BufReader::new(stdin.lock());
+            for line in reader.lines() {
+                let line = line.with_context(|| "Failed to read from stdin")?;
+                writeln!(handle, "{}", line)
+                    .with_context(|| "Unable to print file contents")?;
+            }
+        } else {
+            let file = File::open(&path)
+                .with_context(|| format!("Unable to read file `{}`", path.display()))?;
+            let reader = BufReader::new(file);
+            for line in reader.lines() {
+                let line = line
+                    .with_context(|| format!("Unable to read file `{}`", path.display()))?;
+                writeln!(handle, "{}", line)
+                    .with_context(|| "Unable to print file contents")?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 fn cato(mut args: Cli, mode: NumberMode) -> Result<()> {
     let mut count: u64 = 1;
     let mut squeeze_count: usize = 0;
@@ -233,6 +281,10 @@ fn cato(mut args: Cli, mode: NumberMode) -> Result<()> {
 
 fn main() -> Result<()> {
     let args = Cli::parse();
+
+    if args.is_plain() {
+        return simple_cato(args);
+    }
 
     let mode = if args.number_nonblank {
         NumberMode::NonBlank
