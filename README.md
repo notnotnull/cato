@@ -16,6 +16,7 @@ Options:
   -b, --number-nonblank  Number nonempty output lines, overrides -n
   -E, --show-ends        Display $ at the end of each line
   -n, --number           Number all output lines
+  -s, --squeeze-blank    Suppress repeated empty output lines
   -h, --help             Print help
   -V, --version          Print version
 ```
