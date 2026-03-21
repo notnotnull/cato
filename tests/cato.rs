@@ -152,3 +152,19 @@ fn squeeze_blank() -> Result<(), Box<dyn std::error::Error>> {
     let _ = fs::remove_file(path);
     Ok(())
 }
+
+#[test]
+fn show_tabs() -> Result<(), Box<dyn std::error::Error>> {
+    let path = temp_file_path("show-tabs");
+    fs::write(&path, "A\tB\n\tC")?;
+
+    let mut cmd = Command::cargo_bin("cato")?;
+    cmd.args(["-T"])
+        .arg(&path)
+        .assert()
+        .success()
+        .stdout(predicate::eq("A^IB\n^IC"));
+
+    let _ = fs::remove_file(path);
+    Ok(())
+}

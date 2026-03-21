@@ -18,6 +18,9 @@ struct Cli {
     /// Suppress repeated empty output lines
     #[arg(short = 's', long = "squeeze-blank", default_value_t = false)]
     squeeze_blank: bool,
+    /// Display TAB characters as ^I
+    #[arg(short = 'T', long = "show-tabs", default_value_t = false)]
+    show_tabs: bool,
     /// file(s) to read
     #[arg(num_args = 0..)]
     files: Vec<std::path::PathBuf>,
@@ -58,7 +61,14 @@ fn cato(args: Cli, mode: NumberMode) -> Result<()> {
                 .with_context(|| format!("Unable to read file {}", path.display()))?
         };
 
-        for line in content.lines() {
+        for raw_line in content.split_inclusive('\n') {
+            let has_newline = raw_line.ends_with('\n');
+            let line = if has_newline {
+                &raw_line[..raw_line.len() - 1]
+            } else {
+                raw_line
+            };
+
             if line.is_empty() && args.squeeze_blank {
                 squeeze_count += 1;
                 if squeeze_count > 1 {
@@ -69,37 +79,45 @@ fn cato(args: Cli, mode: NumberMode) -> Result<()> {
             }
 
 
-            let rendered_line = if args.show_ends {
+            let mut rendered_line = if args.show_ends {
                 format!("{}$", line)
             } else {
                 line.to_string()
             };
 
+            if args.show_tabs {
+                rendered_line = rendered_line.replace("\t", "^I");
+            }
+
             match mode {
                 NumberMode::None => {
-                    writeln!(handle, "{}", rendered_line)
+                    write!(handle, "{}", rendered_line)
                         .with_context(|| "Unable to print contents")?;
                 }
                 NumberMode::All => {
-                    writeln!(handle, "{:<4}{}{:<2}{}", "", count, "", rendered_line)
+                    write!(handle, "{:<4}{}{:<2}{}", "", count, "", rendered_line)
                         .with_context(|| "Unable to print contents")?;
                     count += 1;
                 }
                 NumberMode::NonBlank => {
                     if line.is_empty() {
                         if args.show_ends {
-                            writeln!(handle, "$")
+                            write!(handle, "$")
                                 .with_context(|| "Unable to print contents")?;
                         } else {
-                            writeln!(handle)
+                            write!(handle, "")
                                 .with_context(|| "Unable to print contents")?;
                         }
                     } else {
-                        writeln!(handle, "{:<4}{}{:<2}{}", "", count, "", rendered_line)
+                        write!(handle, "{:<4}{}{:<2}{}", "", count, "", rendered_line)
                             .with_context(|| "Unable to print contents")?;
                         count += 1;
                     }
                 }
+            }
+
+            if has_newline {
+                writeln!(handle).with_context(|| "Unable to print contents")?;
             }
         }
     }
