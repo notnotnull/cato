@@ -48,7 +48,7 @@ fn cato(args: Cli, mode: NumberMode) -> Result<()> {
     };
 
     for path in files {
-        let content = if path == std::path::PathBuf::from("-") {
+        let content = if path.to_str() == Some("-") {
             read_stdin()?
         } else {
             std::fs::read_to_string(&path)
@@ -106,7 +106,7 @@ fn main() -> Result<()> {
         NumberMode::None
     };
 
-    cato(args, mode).with_context(|| format!("cato"))?;
+    cato(args, mode).with_context(|| "cato")?;
 
     Ok(())
 }
