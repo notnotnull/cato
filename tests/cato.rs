@@ -217,3 +217,35 @@ fn show_nonprinting_meta_bytes() -> Result<(), Box<dyn std::error::Error>> {
     let _ = fs::remove_file(path);
     Ok(())
 }
+
+#[test]
+fn combination_v_and_t() -> Result<(), Box<dyn std::error::Error>> {
+    let path = temp_file_path("combination-t");
+    fs::write(&path, b"A\t\x01B")?;
+
+    let mut cmd = Command::cargo_bin("cato")?;
+    cmd.args(["-t"])
+        .arg(&path)
+        .assert()
+        .success()
+        .stdout(predicate::eq("A^I^AB"));
+
+    let _ = fs::remove_file(path);
+    Ok(())
+}
+
+#[test]
+fn combination_v_and_e() -> Result<(), Box<dyn std::error::Error>> {
+    let path = temp_file_path("combination-e");
+    fs::write(&path, b"A\x01\n\tB")?;
+
+    let mut cmd = Command::cargo_bin("cato")?;
+    cmd.args(["-e"])
+        .arg(&path)
+        .assert()
+        .success()
+        .stdout(predicate::eq("A^A$\n\tB$"));
+
+    let _ = fs::remove_file(path);
+    Ok(())
+}
