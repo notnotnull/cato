@@ -9,6 +9,9 @@ struct Cli {
     /// Number nonempty output lines, overrides -n
     #[arg(short = 'b', long = "number-nonblank", default_value_t = false)]
     number_nonblank: bool,
+    /// Display $ at the end of each line
+    #[arg(short = 'E', long = "show-ends", default_value_t = false)]
+    show_ends: bool,
     /// Number all output lines
     #[arg(short = 'n', long, default_value_t = false)]
     number: bool,
@@ -33,6 +36,7 @@ fn read_stdin() -> Result<String> {
 }
 
 fn cato(args: Cli, mode: NumberMode) -> Result<()> {
+    let show_ends = args.show_ends;
     let mut count: usize = 1;
     let stdout = io::stdout();
     let mut handle = io::BufWriter::new(stdout);
@@ -52,22 +56,33 @@ fn cato(args: Cli, mode: NumberMode) -> Result<()> {
         };
 
         for line in content.lines() {
+            let rendered_line = if show_ends {
+                format!("{}$", line)
+            } else {
+                line.to_string()
+            };
+
             match mode {
                 NumberMode::None => {
-                    writeln!(handle, "{}", line)
+                    writeln!(handle, "{}", rendered_line)
                         .with_context(|| "Unable to print contents")?;
                 }
                 NumberMode::All => {
-                    writeln!(handle, "{:<4}{}{:<2}{}", "", count, "", line)
+                    writeln!(handle, "{:<4}{}{:<2}{}", "", count, "", rendered_line)
                         .with_context(|| "Unable to print contents")?;
                     count += 1;
                 }
                 NumberMode::NonBlank => {
                     if line.is_empty() {
-                        writeln!(handle)
-                            .with_context(|| "Unable to print contents")?;
+                        if show_ends {
+                            writeln!(handle, "$")
+                                .with_context(|| "Unable to print contents")?;
+                        } else {
+                            writeln!(handle)
+                                .with_context(|| "Unable to print contents")?;
+                        }
                     } else {
-                        writeln!(handle, "{:<4}{}{:<2}{}", "", count, "", line)
+                        writeln!(handle, "{:<4}{}{:<2}{}", "", count, "", rendered_line)
                             .with_context(|| "Unable to print contents")?;
                         count += 1;
                     }

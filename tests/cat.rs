@@ -14,7 +14,7 @@ fn temp_file_path(name: &str) -> PathBuf {
 }
 
 #[test]
-fn missing_file_returns_error() -> Result<(), Box<dyn std::error::Error>> {
+fn invalid_file_path() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("cato")?;
 
     cmd.arg("does-not-exist.txt");
@@ -26,7 +26,7 @@ fn missing_file_returns_error() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn stdin_dash_then_file_with_numbering() -> Result<(), Box<dyn std::error::Error>> {
+fn stdin_then_file_with_numbering() -> Result<(), Box<dyn std::error::Error>> {
     let path = temp_file_path("numbering");
     fs::write(&path, "R1\nR2\n")?;
 
@@ -58,7 +58,7 @@ fn no_args_reads_stdin() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn number_nonblank_only_numbers_nonblank_lines() -> Result<(), Box<dyn std::error::Error>> {
+fn number_nonblank_only() -> Result<(), Box<dyn std::error::Error>> {
     let path = temp_file_path("number-nonblank");
     fs::write(&path, "A\n\nB\n")?;
 
@@ -84,6 +84,54 @@ fn number_nonblank_overrides_number_all() -> Result<(), Box<dyn std::error::Erro
         .assert()
         .success()
         .stdout(predicate::eq("    1  A\n\n    2  B\n"));
+
+    let _ = fs::remove_file(path);
+    Ok(())
+}
+
+#[test]
+fn show_ends() -> Result<(), Box<dyn std::error::Error>> {
+    let path = temp_file_path("show-ends");
+    fs::write(&path, "A\n\nB\n")?;
+
+    let mut cmd = Command::cargo_bin("cato")?;
+    cmd.arg("-E")
+        .arg(&path)
+        .assert()
+        .success()
+        .stdout(predicate::eq("A$\n$\nB$\n"));
+
+    let _ = fs::remove_file(path);
+    Ok(())
+}
+
+#[test]
+fn show_ends_with_n_option() -> Result<(), Box<dyn std::error::Error>> {
+    let path = temp_file_path("show-ends-numbered");
+    fs::write(&path, "A\n\nB\n")?;
+
+    let mut cmd = Command::cargo_bin("cato")?;
+    cmd.args(["-n", "-E"])
+        .arg(&path)
+        .assert()
+        .success()
+        .stdout(predicate::eq("    1  A$\n    2  $\n    3  B$\n"));
+
+    let _ = fs::remove_file(path);
+    Ok(())
+}
+
+#[test]
+fn show_ends_with_e_option() -> Result<(), Box<dyn std::error::Error>> {
+    let path = temp_file_path("show-ends-number-nonblank");
+    fs::write(&path, "A\n\nB\n")?;
+
+    let mut cmd = Command::cargo_bin("cato")?;
+    cmd.args(["-b", "-E"])
+        .arg(&path)
+        .assert()
+        .success()
+        .stdout(predicate::eq("    1  A$\n$\n    2  B$\n"));
 
     let _ = fs::remove_file(path);
     Ok(())
