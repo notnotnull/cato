@@ -6,7 +6,7 @@
     <title>cato (Install)</title>
     <authors>Alex Campbell</authors>
     <projectUrl>https://github.com/notnotnull/cato</projectUrl>
-    <tags>cato,portable,windows-10,utilities</tags>
+    <tags>cato portable windows-10 utilities</tags>
     <summary>A lightweight file catenation tool written in Rust.</summary>
     <description>A lightweight file catenation tool written in Rust.</description>
   </metadata>
