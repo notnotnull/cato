@@ -1,0 +1,31 @@
+name: i686
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install i686 system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-multilib libc6-dev-i386
+
+    - name: Add Rust target
+      run: rustup target add i686-unknown-linux-gnu
+
+    - name: Clippy (i686)
+      run: cargo clippy --target i686-unknown-linux-gnu
+
+    - name: Test (i686)
+      run: cargo test32
