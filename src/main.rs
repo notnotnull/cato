@@ -1,6 +1,7 @@
-use std::io::{self, Read, Write};
+use std::fs::File;
+use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use anyhow::{Context, Result};
-use clap::{Parser};
+use clap::Parser;
 
 /// Command-line Interface options
 #[derive(Parser)]
@@ -38,6 +39,19 @@ struct Cli {
     files: Vec<std::path::PathBuf>,
 }
 
+impl Cli {
+    fn is_plain(&self) -> bool {
+        !self.number_nonblank
+            && !self.combination_e
+            && !self.show_ends
+            && !self.number
+            && !self.squeeze_blank
+            && !self.combination_t
+            && !self.show_tabs
+            && !self.show_nonprinting
+    }
+}
+
 #[derive(Copy, Clone)]
 enum NumberMode {
     None,
@@ -45,12 +59,87 @@ enum NumberMode {
     NonBlank,
 }
 
-fn read_stdin() -> Result<Vec<u8>> {
-    let mut input = Vec::new();
-    io::stdin()
-        .read_to_end(&mut input)
-        .with_context(|| "Failed to read from stdin")?;
-    Ok(input)
+fn process_reader(
+    reader: &mut dyn BufRead,
+    show_tabs: bool,
+    show_nonprinting: bool,
+    show_ends: bool,
+    squeeze_blank: bool,
+    mode: NumberMode,
+    handle: &mut dyn Write,
+    count: &mut u64,
+    squeeze_count: &mut usize,
+) -> Result<()> {
+    let mut buf = Vec::new();
+
+    loop {
+        buf.clear();
+        let bytes_read = reader
+            .read_until(b'\n', &mut buf)
+            .with_context(|| "Failed to read input")?;
+
+        if bytes_read == 0 {
+            break;
+        }
+
+        let has_newline = buf.ends_with(&[b'\n']);
+        let line = if has_newline {
+            &buf[..buf.len() - 1]
+        } else {
+            &buf[..]
+        };
+
+        if line.is_empty() && squeeze_blank {
+            *squeeze_count += 1;
+            if *squeeze_count > 1 {
+                continue;
+            }
+        } else {
+            *squeeze_count = 0;
+        }
+
+        let rendered = render_line(line, show_tabs, show_nonprinting, show_ends);
+
+        match mode {
+            NumberMode::None => {
+                handle
+                    .write_all(&rendered)
+                    .with_context(|| "Unable to print contents")?;
+            }
+            NumberMode::All => {
+                write!(handle, "{:<4}{}{:<2}", "", *count, "")
+                    .with_context(|| "Unable to print contents")?;
+                handle
+                    .write_all(&rendered)
+                    .with_context(|| "Unable to print contents")?;
+                *count += 1;
+            }
+            NumberMode::NonBlank => {
+                if line.is_empty() {
+                    if show_ends {
+                        handle
+                            .write_all(b"$")
+                            .with_context(|| "Unable to print contents")?;
+                    }
+                } else {
+                    write!(handle, "{:<4}{}{:<2}", "", *count, "")
+                        .with_context(|| "Unable to print contents")?;
+                    handle
+                        .write_all(&rendered)
+                        .with_context(|| "Unable to print contents")?;
+                    *count += 1;
+                }
+            }
+        }
+
+        if has_newline {
+            handle
+                .write_all(b"\n")
+                .with_context(|| "Unable to print contents")?;
+        }
+    }
+
+    Ok(())
 }
 
 fn render_line(line: &[u8], show_tabs: bool, show_nonprinting: bool, show_ends: bool) -> Vec<u8> {
@@ -95,11 +184,46 @@ fn render_line(line: &[u8], show_tabs: bool, show_nonprinting: bool, show_ends: 
     out
 }
 
+fn simple_cato(args: Cli) -> Result<()> {
+    let stdout = io::stdout();
+    let mut handle = BufWriter::new(stdout.lock());
+
+    let files = if args.files.is_empty() {
+        vec![std::path::PathBuf::from("-")]
+    } else {
+        args.files
+    };
+
+    for path in files {
+        if path.as_os_str() == "-" {
+            let stdin = io::stdin();
+            let reader = BufReader::new(stdin.lock());
+            for line in reader.lines() {
+                let line = line.with_context(|| "Failed to read from stdin")?;
+                writeln!(handle, "{}", line)
+                    .with_context(|| "Unable to print file contents")?;
+            }
+        } else {
+            let file = File::open(&path)
+                .with_context(|| format!("Unable to read file `{}`", path.display()))?;
+            let reader = BufReader::new(file);
+            for line in reader.lines() {
+                let line = line
+                    .with_context(|| format!("Unable to read file `{}`", path.display()))?;
+                writeln!(handle, "{}", line)
+                    .with_context(|| "Unable to print file contents")?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 fn cato(mut args: Cli, mode: NumberMode) -> Result<()> {
-    let mut count: usize = 1;
+    let mut count: u64 = 1;
     let mut squeeze_count: usize = 0;
     let stdout = io::stdout();
-    let mut handle = io::BufWriter::new(stdout);
+    let mut handle = BufWriter::new(stdout.lock());
 
     if args.combination_e {
         args.show_nonprinting = true;
@@ -118,64 +242,37 @@ fn cato(mut args: Cli, mode: NumberMode) -> Result<()> {
     };
 
     for path in files {
-        let content = if path.to_str() == Some("-") {
-            read_stdin()?
+        if path.as_os_str() == "-" {
+            let stdin = io::stdin();
+            let mut reader = BufReader::new(stdin.lock());
+            process_reader(
+                &mut reader,
+                args.show_tabs,
+                args.show_nonprinting,
+                args.show_ends,
+                args.squeeze_blank,
+                mode,
+                &mut handle,
+                &mut count,
+                &mut squeeze_count,
+            )
+            .with_context(|| "Failed to read stdin")?;
         } else {
-            std::fs::read(&path)
-                .with_context(|| format!("Unable to read file {}", path.display()))?
-        };
-
-        for raw_line in content.split_inclusive(|&b| b == b'\n') {
-            let has_newline = raw_line.ends_with(&[b'\n']);
-            let line = if has_newline {
-                &raw_line[..raw_line.len() - 1]
-            } else {
-                raw_line
-            };
-
-            if line.is_empty() && args.squeeze_blank {
-                squeeze_count += 1;
-                if squeeze_count > 1 {
-                    continue;
-                }
-            } else {
-                squeeze_count = 0;
-            }
-
-            let rendered_line = render_line(line, args.show_tabs, args.show_nonprinting, args.show_ends);
-
-            match mode {
-                NumberMode::None => {
-                    handle.write_all(&rendered_line)
-                        .with_context(|| "Unable to print contents")?;
-                }
-                NumberMode::All => {
-                    write!(handle, "{:<4}{}{:<2}", "", count, "")
-                        .with_context(|| "Unable to print contents")?;
-                    handle.write_all(&rendered_line)
-                        .with_context(|| "Unable to print contents")?;
-                    count += 1;
-                }
-                NumberMode::NonBlank => {
-                    if line.is_empty() {
-                        if args.show_ends {
-                            handle.write_all(b"$")
-                                .with_context(|| "Unable to print contents")?;
-                        }
-                    } else {
-                        write!(handle, "{:<4}{}{:<2}", "", count, "")
-                            .with_context(|| "Unable to print contents")?;
-                        handle.write_all(&rendered_line)
-                            .with_context(|| "Unable to print contents")?;
-                        count += 1;
-                    }
-                }
-            }
-
-            if has_newline {
-                handle.write_all(b"\n")
-                    .with_context(|| "Unable to print contents")?;
-            }
+            let file = File::open(&path)
+                .with_context(|| format!("Unable to read file {}", path.display()))?;
+            let mut reader = BufReader::new(file);
+            process_reader(
+                &mut reader,
+                args.show_tabs,
+                args.show_nonprinting,
+                args.show_ends,
+                args.squeeze_blank,
+                mode,
+                &mut handle,
+                &mut count,
+                &mut squeeze_count,
+            )
+            .with_context(|| format!("Unable to read file {}", path.display()))?;
         }
     }
 
@@ -183,8 +280,11 @@ fn cato(mut args: Cli, mode: NumberMode) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    // Handle arguments with clap
     let args = Cli::parse();
+
+    if args.is_plain() {
+        return simple_cato(args);
+    }
 
     let mode = if args.number_nonblank {
         NumberMode::NonBlank
@@ -194,7 +294,7 @@ fn main() -> Result<()> {
         NumberMode::None
     };
 
-    cato(args, mode).with_context(|| "cato")?;
+    cato(args, mode)?;
 
     Ok(())
 }
