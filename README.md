@@ -20,6 +20,7 @@ Options:
   -s, --squeeze-blank     Suppress repeated empty output lines
   -t                      Equivalent to -vT
   -T, --show-tabs         Display TAB characters as ^I
+  -u                      (ignored)
   -v, --show-nonprinting  Use ^ and M- notation, except for LFD and TAB
   -h, --help              Print help
   -V, --version           Print version

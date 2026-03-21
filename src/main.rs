@@ -27,6 +27,9 @@ struct Cli {
     /// Display TAB characters as ^I
     #[arg(short = 'T', long = "show-tabs", default_value_t = false)]
     show_tabs: bool,
+    /// (ignored)
+    #[arg(short = 'u', default_value_t = false)]
+    unbuffered: bool,
     /// Use ^ and M- notation, except for LFD and TAB
     #[arg(short = 'v', long = "show-nonprinting", default_value_t = false)]
     show_nonprinting: bool,
