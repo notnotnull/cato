@@ -6,12 +6,22 @@ use clap::{Parser};
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
+    /// Number nonempty output lines, overrides -n
+    #[arg(short = 'b', long = "number-nonblank", default_value_t = false)]
+    number_nonblank: bool,
     /// Number all output lines
-    #[arg(short, long, default_value_t = false)]
+    #[arg(short = 'n', long, default_value_t = false)]
     number: bool,
     /// file(s) to read
     #[arg(num_args = 0..)]
     files: Vec<std::path::PathBuf>,
+}
+
+#[derive(Copy, Clone)]
+enum NumberMode {
+    None,
+    All,
+    NonBlank,
 }
 
 fn read_stdin() -> Result<String> {
@@ -22,47 +32,9 @@ fn read_stdin() -> Result<String> {
     Ok(input)
 }
 
-/// Plain cato
-fn simple_cato(args: Cli) -> Result<()> {
-    // Get the global stdout entity
-    let stdout = io::stdout();
-    // wrap the handle in a buffer to reduce flushes
-    let mut handle = io::BufWriter::new(stdout);
-
-    let files = if args.files.is_empty() {
-        vec![std::path::PathBuf::from("-")]
-    } else {
-        args.files
-    };
-
-    for path in files {
-        if path == std::path::PathBuf::from("-") {
-            let input = read_stdin()?;
-            for line in input.lines() {
-                writeln!(handle, "{}", line)
-                    .with_context(|| "Unable to print stdin contents")?;
-            }
-            continue;
-        }
-        // Handle arguments with anyhow for more context
-        let content = std::fs::read_to_string(&path)
-            .with_context(|| format!("Unable to read file `{}`", path.display()))?;
-
-        for line in content.lines() {
-            writeln!(handle, "{}", line)
-                .with_context(|| format!("Unable to print file contents `{}`", path.display()))?;
-        }
-    }
-
-    Ok(())
-}
-
-/// Option enabled cato
-fn cato(args: Cli) -> Result<()> {
-    // Get the global stdout entity
+fn cato(args: Cli, mode: NumberMode) -> Result<()> {
     let mut count: usize = 1;
     let stdout = io::stdout();
-    // wrap the handle in a buffer to reduce flushes
     let mut handle = io::BufWriter::new(stdout);
 
     let files = if args.files.is_empty() {
@@ -72,23 +44,35 @@ fn cato(args: Cli) -> Result<()> {
     };
 
     for path in files {
-        if path == std::path::PathBuf::from("-") {
-            let input = read_stdin()?;
-            for line in input.lines() {
-                writeln!(handle, "{:<4}{}{:<2}{}","", count, "", line)
-                    .with_context(|| "Unable to print stdin contents")?;
-                count += 1;
-            }
-            continue;
-        }
-        // Handle arguments with anyhow for more context
-        let content = std::fs::read_to_string(&path)
-            .with_context(|| format!("Unable to read file `{}`", path.display()))?;
+        let content = if path == std::path::PathBuf::from("-") {
+            read_stdin()?
+        } else {
+            std::fs::read_to_string(&path)
+                .with_context(|| format!("Unable to read file {}", path.display()))?
+        };
 
         for line in content.lines() {
-            writeln!(handle, "{:<4}{}{:<2}{}","", count, "", line)
-                .with_context(|| format!("Unable to print file contents `{}`", path.display()))?;
-            count += 1;
+            match mode {
+                NumberMode::None => {
+                    writeln!(handle, "{}", line)
+                        .with_context(|| "Unable to print contents")?;
+                }
+                NumberMode::All => {
+                    writeln!(handle, "{:<4}{}{:<2}{}", "", count, "", line)
+                        .with_context(|| "Unable to print contents")?;
+                    count += 1;
+                }
+                NumberMode::NonBlank => {
+                    if line.is_empty() {
+                        writeln!(handle)
+                            .with_context(|| "Unable to print contents")?;
+                    } else {
+                        writeln!(handle, "{:<4}{}{:<2}{}", "", count, "", line)
+                            .with_context(|| "Unable to print contents")?;
+                        count += 1;
+                    }
+                }
+            }
         }
     }
 
@@ -99,11 +83,15 @@ fn main() -> Result<()> {
     // Handle arguments with clap
     let args = Cli::parse();
 
-    if args.number == false {
-        simple_cato(args).with_context(|| format!("simple_cato"))?;
+    let mode = if args.number_nonblank {
+        NumberMode::NonBlank
+    } else if args.number {
+        NumberMode::All
     } else {
-        cato(args).with_context(|| format!("cato"))?;
-    }
+        NumberMode::None
+    };
+
+    cato(args, mode).with_context(|| format!("cato"))?;
 
     Ok(())
 }

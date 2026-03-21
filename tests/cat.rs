@@ -56,3 +56,35 @@ fn no_args_reads_stdin() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[test]
+fn number_nonblank_only_numbers_nonblank_lines() -> Result<(), Box<dyn std::error::Error>> {
+    let path = temp_file_path("number-nonblank");
+    fs::write(&path, "A\n\nB\n")?;
+
+    let mut cmd = Command::cargo_bin("cato")?;
+    cmd.arg("-b")
+        .arg(&path)
+        .assert()
+        .success()
+        .stdout(predicate::eq("    1  A\n\n    2  B\n"));
+
+    let _ = fs::remove_file(path);
+    Ok(())
+}
+
+#[test]
+fn number_nonblank_overrides_number_all() -> Result<(), Box<dyn std::error::Error>> {
+    let path = temp_file_path("number-precedence");
+    fs::write(&path, "A\n\nB\n")?;
+
+    let mut cmd = Command::cargo_bin("cato")?;
+    cmd.args(["-b", "-n"])
+        .arg(&path)
+        .assert()
+        .success()
+        .stdout(predicate::eq("    1  A\n\n    2  B\n"));
+
+    let _ = fs::remove_file(path);
+    Ok(())
+}
