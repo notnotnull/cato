@@ -21,6 +21,9 @@ struct Cli {
     /// Display TAB characters as ^I
     #[arg(short = 'T', long = "show-tabs", default_value_t = false)]
     show_tabs: bool,
+    /// Use ^ and M- notation, except for LFD and TAB
+    #[arg(short = 'v', long = "show-nonprinting", default_value_t = false)]
+    show_nonprinting: bool,
     /// file(s) to read
     #[arg(num_args = 0..)]
     files: Vec<std::path::PathBuf>,
@@ -33,12 +36,54 @@ enum NumberMode {
     NonBlank,
 }
 
-fn read_stdin() -> Result<String> {
-    let mut input = String::new();
+fn read_stdin() -> Result<Vec<u8>> {
+    let mut input = Vec::new();
     io::stdin()
-        .read_to_string(&mut input)
+        .read_to_end(&mut input)
         .with_context(|| "Failed to read from stdin")?;
     Ok(input)
+}
+
+fn render_line(line: &[u8], show_tabs: bool, show_nonprinting: bool, show_ends: bool) -> Vec<u8> {
+    let mut out = Vec::with_capacity(line.len() + 1);
+
+    for &b in line {
+        if show_tabs && b == b'\t' {
+            out.extend_from_slice(b"^I");
+            continue;
+        }
+
+        if show_nonprinting {
+            match b {
+                0..=8 | 11..=31 => {
+                    out.push(b'^');
+                    out.push(b + 64);
+                }
+                127 => out.extend_from_slice(b"^?"),
+                128..=255 => {
+                    out.extend_from_slice(b"M-");
+                    let low = b - 128;
+                    match low {
+                        0..=8 | 11..=31 => {
+                            out.push(b'^');
+                            out.push(low + 64);
+                        }
+                        127 => out.extend_from_slice(b"^?"),
+                        _ => out.push(low),
+                    }
+                }
+                _ => out.push(b),
+            }
+        } else {
+            out.push(b);
+        }
+    }
+
+    if show_ends {
+        out.push(b'$');
+    }
+
+    out
 }
 
 fn cato(args: Cli, mode: NumberMode) -> Result<()> {
@@ -57,12 +102,12 @@ fn cato(args: Cli, mode: NumberMode) -> Result<()> {
         let content = if path.to_str() == Some("-") {
             read_stdin()?
         } else {
-            std::fs::read_to_string(&path)
+            std::fs::read(&path)
                 .with_context(|| format!("Unable to read file {}", path.display()))?
         };
 
-        for raw_line in content.split_inclusive('\n') {
-            let has_newline = raw_line.ends_with('\n');
+        for raw_line in content.split_inclusive(|&b| b == b'\n') {
+            let has_newline = raw_line.ends_with(&[b'\n']);
             let line = if has_newline {
                 &raw_line[..raw_line.len() - 1]
             } else {
@@ -78,38 +123,30 @@ fn cato(args: Cli, mode: NumberMode) -> Result<()> {
                 squeeze_count = 0;
             }
 
-
-            let mut rendered_line = if args.show_ends {
-                format!("{}$", line)
-            } else {
-                line.to_string()
-            };
-
-            if args.show_tabs {
-                rendered_line = rendered_line.replace("\t", "^I");
-            }
+            let rendered_line = render_line(line, args.show_tabs, args.show_nonprinting, args.show_ends);
 
             match mode {
                 NumberMode::None => {
-                    write!(handle, "{}", rendered_line)
+                    handle.write_all(&rendered_line)
                         .with_context(|| "Unable to print contents")?;
                 }
                 NumberMode::All => {
-                    write!(handle, "{:<4}{}{:<2}{}", "", count, "", rendered_line)
+                    write!(handle, "{:<4}{}{:<2}", "", count, "")
+                        .with_context(|| "Unable to print contents")?;
+                    handle.write_all(&rendered_line)
                         .with_context(|| "Unable to print contents")?;
                     count += 1;
                 }
                 NumberMode::NonBlank => {
                     if line.is_empty() {
                         if args.show_ends {
-                            write!(handle, "$")
-                                .with_context(|| "Unable to print contents")?;
-                        } else {
-                            write!(handle, "")
+                            handle.write_all(b"$")
                                 .with_context(|| "Unable to print contents")?;
                         }
                     } else {
-                        write!(handle, "{:<4}{}{:<2}{}", "", count, "", rendered_line)
+                        write!(handle, "{:<4}{}{:<2}", "", count, "")
+                            .with_context(|| "Unable to print contents")?;
+                        handle.write_all(&rendered_line)
                             .with_context(|| "Unable to print contents")?;
                         count += 1;
                     }
@@ -117,7 +154,8 @@ fn cato(args: Cli, mode: NumberMode) -> Result<()> {
             }
 
             if has_newline {
-                writeln!(handle).with_context(|| "Unable to print contents")?;
+                handle.write_all(b"\n")
+                    .with_context(|| "Unable to print contents")?;
             }
         }
     }

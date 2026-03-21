@@ -168,3 +168,52 @@ fn show_tabs() -> Result<(), Box<dyn std::error::Error>> {
     let _ = fs::remove_file(path);
     Ok(())
 }
+
+#[test]
+fn show_nonprinting() -> Result<(), Box<dyn std::error::Error>> {
+    let path = temp_file_path("show-nonprinting");
+    fs::write(&path, "A\x01B\n\x02C")?;
+
+    let mut cmd = Command::cargo_bin("cato")?;
+    cmd.args(["-v"])
+        .arg(&path)
+        .assert()
+        .success()
+        .stdout(predicate::eq("A^AB\n^BC"));
+
+
+    let _ = fs::remove_file(path);
+    Ok(())
+}
+
+#[test]
+fn show_nonprinting_del_byte() -> Result<(), Box<dyn std::error::Error>> {
+    let path = temp_file_path("show-nonprinting-del");
+    fs::write(&path, b"A\x7fB")?;
+
+    let mut cmd = Command::cargo_bin("cato")?;
+    cmd.args(["-v"])
+        .arg(&path)
+        .assert()
+        .success()
+        .stdout(predicate::eq("A^?B"));
+
+    let _ = fs::remove_file(path);
+    Ok(())
+}
+
+#[test]
+fn show_nonprinting_meta_bytes() -> Result<(), Box<dyn std::error::Error>> {
+    let path = temp_file_path("show-nonprinting-meta");
+    fs::write(&path, b"\x80\xff")?;
+
+    let mut cmd = Command::cargo_bin("cato")?;
+    cmd.args(["-v"])
+        .arg(&path)
+        .assert()
+        .success()
+        .stdout(predicate::eq("M-^@M-^?"));
+
+    let _ = fs::remove_file(path);
+    Ok(())
+}
