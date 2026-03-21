@@ -13,13 +13,16 @@ Arguments:
   [FILES]...  file(s) to read
 
 Options:
-  -b, --number-nonblank  Number nonempty output lines, overrides -n
-  -E, --show-ends        Display $ at the end of each line
-  -n, --number           Number all output lines
-  -s, --squeeze-blank    Suppress repeated empty output lines
-  -T, --show-tabs        Display TAB characters as ^I
-  -h, --help             Print help
-  -V, --version          Print version
+  -b, --number-nonblank   Number nonempty output lines, overrides -n
+  -e                      Equivalent to -vE
+  -E, --show-ends         Display $ at the end of each line
+  -n, --number            Number all output lines
+  -s, --squeeze-blank     Suppress repeated empty output lines
+  -t                      Equivalent to -vT
+  -T, --show-tabs         Display TAB characters as ^I
+  -v, --show-nonprinting  Use ^ and M- notation, except for LFD and TAB
+  -h, --help              Print help
+  -V, --version           Print version
 ```
 
 ## Install

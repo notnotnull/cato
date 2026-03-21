@@ -9,6 +9,9 @@ struct Cli {
     /// Number nonempty output lines, overrides -n
     #[arg(short = 'b', long = "number-nonblank", default_value_t = false)]
     number_nonblank: bool,
+    /// Equivalent to -vE
+    #[arg(short = 'e', default_value_t = false)]
+    combination_e: bool,
     /// Display $ at the end of each line
     #[arg(short = 'E', long = "show-ends", default_value_t = false)]
     show_ends: bool,
@@ -18,6 +21,9 @@ struct Cli {
     /// Suppress repeated empty output lines
     #[arg(short = 's', long = "squeeze-blank", default_value_t = false)]
     squeeze_blank: bool,
+    /// Equivalent to -vT
+    #[arg(short = 't', default_value_t = false)]
+    combination_t: bool,
     /// Display TAB characters as ^I
     #[arg(short = 'T', long = "show-tabs", default_value_t = false)]
     show_tabs: bool,
@@ -86,11 +92,21 @@ fn render_line(line: &[u8], show_tabs: bool, show_nonprinting: bool, show_ends: 
     out
 }
 
-fn cato(args: Cli, mode: NumberMode) -> Result<()> {
+fn cato(mut args: Cli, mode: NumberMode) -> Result<()> {
     let mut count: usize = 1;
     let mut squeeze_count: usize = 0;
     let stdout = io::stdout();
     let mut handle = io::BufWriter::new(stdout);
+
+    if args.combination_e {
+        args.show_nonprinting = true;
+        args.show_ends = true;
+    }
+
+    if args.combination_t {
+        args.show_nonprinting = true;
+        args.show_tabs = true;
+    }
 
     let files = if args.files.is_empty() {
         vec![std::path::PathBuf::from("-")]
